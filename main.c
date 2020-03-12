@@ -27,6 +27,7 @@ char* handleInput();
 struct PLAYER* lookupPlayer(char* player);
 void printSummonOrder(struct PLAYER* pCurrent);
 void printElementContent(struct PLAYER* pCurrent);
+struct PLAYER* createPlayer(char* player);
 bool insertElementBefore(struct PLAYER* pCurrent, struct PLAYER* pNew);
 bool insertElementAfter(struct PLAYER* pCurrent, struct PLAYER* pNew);  // Could be implemented as a wrapper for 'insertElementBefore'
 bool removeElement(struct PLAYER* pCurrent);
@@ -67,6 +68,8 @@ char* handleInput() {
     printElementContent(Last);
     return 0;
   }
+  // TODO ability to remove players from the queue
+  // TODO ability to update 'Fights', 'Wins' and 'Losses'
   
   // Use return value to choose between restarting the while(1) loop or continuing
   return input;
@@ -112,6 +115,17 @@ void printElementContent(struct PLAYER* pCurrent) {
   printf("Losses = %d\n", pCurrent->Losses);
   printf("------\n");
   return;
+}
+
+struct PLAYER* createPlayer(char* player) {
+
+  PLAYER* NewPlayer = (PLAYER*)malloc(sizeof(PLAYER));
+  NewPlayer->Player = (char*)malloc(strlen(player));
+  strcpy(NewPlayer->Player, player);
+  NewPlayer->Fights = 0;
+  NewPlayer->Wins   = 0;
+  NewPlayer->Losses = 0;
+  return NewPlayer;
 }
 
 bool insertElementBefore(struct PLAYER* pCurrent, struct PLAYER* pNew) {
@@ -229,14 +243,8 @@ int main() {
 
   char* first = handleInput();
   if(!first) return -1;
-  
-  // Build first element for doubly linked list
-  PLAYER *Head = (PLAYER*)malloc(sizeof(PLAYER));
-  Head->Header.pPrev = Head;
-  Head->Header.pNext = Head;
-  Head->Player = (char*)malloc(strlen(first));
-  strcpy(Head->Player, first);
 
+  PLAYER *Head = createPlayer(first);
   printSummonOrder(Head);
 
   // Initialise the pointer to the last USED element
@@ -249,34 +257,23 @@ int main() {
 
     PLAYER* Exists = lookupPlayer(input);
     if(Exists) {
-      if(Last->Header.pNext == Exists) {
-        // Summoned in the correct order
-      } else {
+      if(Last->Header.pNext != Exists) {
         printf("%s jumped the queue\n", Exists->Player);
         moveElementAfter(Exists, Last);
-      }
+      } else continue;
       Exists->Fights += 1;
       Last = Exists;  // Important to update this
       printSummonOrder(Last);
       continue;
+    } else {
+      PLAYER* New = createPlayer(input);
+      // Insert player into linked last (after most recent element)
+      insertElementAfter(Last, New);
+      //printLinkedList(Head);
+      printSummonOrder(New);
+      // Set the Last element to the newly added one
+      Last = New;
     }
-
-    // Create new player element
-    PLAYER *New = (PLAYER*)malloc(sizeof(PLAYER));
-    // Initialise Player identifier
-    New->Player = (char*)malloc(strlen(input)+1);
-    strcpy(New->Player, input);
-    // Initialise defaults
-    New->Fights = 0;
-    New->Wins   = 0;
-    New->Losses = 0;
-    // Insert player into linked last (after most recent element)
-    insertElementAfter(Last, New);
-    //printLinkedList(Head);
-    printSummonOrder(New);
-    // Set the Last element to the newly added one
-    Last = New;
-    //funcForEachElement(Last, printElementContent);
   }
   return 1;
 }
