@@ -6,4 +6,4 @@ Program to analyse the different FC rules
 
 Sample output:
 
-![Output](/blob/master/FC_RuleSet_Testing.png)
+![Output](FC_RuleSet_Testing.png)
