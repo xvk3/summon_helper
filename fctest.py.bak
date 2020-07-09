@@ -57,7 +57,7 @@ class Player:
   def Timeout(self):
     self.current_streak = 0
     self.inactive_count = 0
-    #self.timeline.append(yob + "\u2588" + rsc)
+    self.timeline.append(yob + "\u2588" + rsc)
 
   def Watching(self):
     self.inactive_count += 1
@@ -94,38 +94,6 @@ class Player:
   def setIC(self, ic):
     self.inactive_count = ic
 
-
-# Sets up matches with the two players who have been waiting the longest
-# Take a break after a 2 win streak
-class FC_RuleSet_2:
-
-  def __init__(self, players, rounds, seed):
-    self.players        = players
-    for player in range(0, len(self.players)):
-      self.players[player].setSkill(round(random.random() * 100))
-      self.players[player].setIC(0)
-    self.rounds         = rounds
-    self.seed           = seed
-    self.cround         = 0
-    self.dump()
-
-  def dump(self):
-    for player in range(0, len(self.players)):
-      print(f"{self.players[player].getName()}, s={self.players[player].getSkill()}, ic={self.players[player].getIC()}, cs={self.players[player].getCS()}")
-
-  def fdump(self):
-    for player in self.players:
-      print(f"{player.getName()},  {player.getTW()},  {player.getTL()},   {player.getTD()}")
-      print(f"{''.join(player.printTimeline())}")
-    exit(1)
-
-  def setupDuel(self, previous_winner):
-
-    self.cround += 1
-    if self.cround > self.rounds: self.fdump()
-    if self.cround == 1:
-      print("First Round")
-
 # Sets up matches with the two players who have been waiting the longest
 # Take a break after a 3 win streak
 class FC_RuleSet_1:
@@ -148,7 +116,7 @@ class FC_RuleSet_1:
     for player in self.players:
       print(f"{player.getName()},  {player.getTW()},  {player.getTL()},   {player.getTD()}")
       print(f"{''.join(player.printTimeline())}")
-    exit(1)
+    exit()
 
   def setupDuel(self, previous_winner):
 
@@ -188,12 +156,12 @@ class FC_RuleSet_1:
     l.Lost()
     print(rsc + f"Round {self.cround}: " + gob + w.getName() + rsc + " vs " + rob +  l.getName() + rsc)
 
-    if w.getCS() >= 3:
+    if w.getCS() >= 2:
       w.Timeout()
-      self.dump()
+      #self.dump()
       self.setupDuel(0)
     else:
-      self.dump()
+      #self.dump()
       self.setupDuel(w)
 
 if __name__ == "__main__":
@@ -204,6 +172,8 @@ if __name__ == "__main__":
     print("Problem with seed")
     exit(0);
   random.seed((args['seed']))
+
+  print("\u2b24")
 
   # build player list
   for player in range(0, NUMBER_OF_PLAYERS):
