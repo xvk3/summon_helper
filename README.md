@@ -6,4 +6,4 @@ Program to analyse the different FC rules
 
 Sample output:
 
-![Output](https://xvk3.github.com/summon_helper/blob/master/FC_RuleSet_Testing.png)
+![Output](/blob/master/FC_RuleSet_Testing.png)
