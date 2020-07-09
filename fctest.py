@@ -7,10 +7,11 @@ rsc = "\033[1;37;40m"
 rob = "\033[1;31;40m"
 gob = "\033[1;32;40m"
 yob = "\033[1;33;40m"
+bob = "\033[1;34;40m"
 
 NUMBER_OF_PLAYERS = 6
 NUMBER_OF_DUELS   = 100
-NUMBER_OF_FCRS    = 6
+NUMBER_OF_FCRS    = 7
 
 fcrsc = 1
 fcrsa = []
@@ -128,6 +129,12 @@ class Player:
   def getPlayed(self):
     return self.played
 
+  def getLastPlayed(self):
+    try:
+      return self.played[-1]
+    except IndexError:
+      return -1 
+
   def setSkill(self, skill):
     self.skill = skill
     return
@@ -160,6 +167,7 @@ Players are matched to prioritise the following:
  2. minimise the range of the players' total_duels
  3. maximise the duel variation for each player
  4. maximise the duel variation for the stream/host
+Players are never Timeout()
 '''
 class FC_RuleSet_7:
 
@@ -169,11 +177,104 @@ class FC_RuleSet_7:
     self.rounds         = rounds
     self.seed           = seed
     self.cround         = 0
+    self.ic_weight      = 4
+    self.td_weight      = 3
 
   def setupDuel(self, previous_winner):
-    return
 
+    self.cround += 1
+    if self.cround > self.rounds:
+      dumpPlayers(self.players)
+      dumpPlayed(self.players)
+      resetPlayers(self.players) # required?
+      return
+    if self.cround == 1:
+      print(bob + "\n" + self.fc + rsc)
 
+    p1 = self.players[0]
+    p2 = self.players[0]
+
+    wplayers = []
+    hplayers = []
+
+    ic_total = 0
+    td_total = 0
+    # Loop through players and generate stats
+    for player in self.players:
+      ic_total += player.getIC()
+      td_total += player.getTD() 
+    ic_average = ic_total / len(self.players)
+    td_average = td_total / len(self.players)
+
+    highest = -9999
+    for player in self.players:
+      score = player.getIC() * self.ic_weight# + (1 - player.getTD() * self.td_weight)
+      print(f"{player.getName()} score = {score}")
+      highest = score if score > highest else highest
+      wplayers.append(score)
+    # wplayers is a list of scores addressable using the same index as self.players
+    
+    for index in range(0, len(wplayers)):
+      print(bob+f"{self.players[index].getName()} score = {wplayers[index]}"+rsc)
+      if wplayers[index] == highest:
+        hplayers.append(index)
+    # hplayers is a list of indexes to the highest scoring players
+
+    for index in range(0, len(hplayers)):
+      print(rob+f"{self.players[hplayers[index]].getName()}"+rsc)
+      print(rob+f"{self.players[hplayers[index]].getName()} last played {self.players[hplayers[index]].getLastPlayed()}"+rsc)    
+ 
+    if len(hplayers) == 2:
+      print(gob+f"{self.players[hplayers[0]].getLastPlayed()}")
+      # If the next two players to play have recently played eachother, swap one player out
+      if self.players[hplayers[0]].getLastPlayed() == hplayers[1]:
+        # Swap to the player with the longest IC
+        highest_ic = -1
+        highest_ic_indexes = []
+        for index in range(0, len(self.players)):
+          if self.players[index].getIC() >= highest_ic:
+            highest_ic = self.players[index].getIC()
+        for index in range(0, len(self.players)):
+          if self.players[index].getIC() == highest_ic:
+            highest_ic_indexes.append(index)           
+        for index in range(0, len(highest_ic_indexes)):
+          if self.players[highest_ic_indexes[index]] != self.players[hplayers[0]]:
+            r = random.randint(0, 1)
+            if r == 0: 
+              p2 = self.players[highest_ic_indexes[index]]
+            else:
+              p1 = self.players[highest_ic_indexes[index]]
+      else:
+        p1 = self.players[hplayers[0]]
+        p2 = self.players[hplayers[1]]
+    elif len(hplayers) == 1:
+      p1 = self.players[hplayers[0]]
+      p2 = p1
+      while p1 == p2:
+        p2 = self.players[random.randint(0, len(self.players)-1)] 
+    else:
+      while p1 == p2:
+        print(hplayers)
+        p1 = self.players[hplayers[random.randint(0, len(hplayers)-1)]]
+        p2 = self.players[hplayers[random.randint(0, len(hplayers)-1)]]
+
+    print(p1.getName())
+    print(p2.getName())
+    dumpPlayers(self.players)
+
+    i = input()
+
+    # Make all other players watch
+    for player in self.players:
+      if player != p1 and player != p2:
+        player.Watching()
+
+    # Do battle
+    w,l = doBattle(p1, p2)
+    w.Won(players.index(l))
+    l.Lost(players.index(w))
+
+    self.setupDuel(w)
 
 '''
 FC_RuleSet_6
@@ -553,6 +654,8 @@ if __name__ == "__main__":
   fcrsa.append(FC_RuleSet_4(players, NUMBER_OF_DUELS, r))
   fcrsa.append(FC_RuleSet_5(players, NUMBER_OF_DUELS, r))
   fcrsa.append(FC_RuleSet_6(players, NUMBER_OF_DUELS, r))
+  fcrsa.append(FC_RuleSet_7(players, NUMBER_OF_DUELS, r))
+
 
   # run FCs
   for fcrs in range(0, NUMBER_OF_FCRS):
