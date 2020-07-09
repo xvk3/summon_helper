@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import random
 import argparse
+from collections import Counter
 
 rsc = "\033[1;37;40m"
 rob = "\033[1;31;40m"
@@ -25,11 +26,40 @@ def dumpPlayers(pa):
   for player in range(0, len(pa)):
     pa[player].printTimelinePretty()
 
+def dumpPlayed(pa):
+  for player in range(0, len(pa)):
+    played = pa[player].getPlayed()
+    played_opponents = list(Counter(played).keys())
+    played_count     = list(Counter(played).values())
+    pmax = 0
+    opponent = 0
+    for opponent in range(0, len(played_opponents)):
+      if played_count[opponent] > pmax:
+        pmax = played_count[opponent]
+        index = opponent     
+    print(f"{pa[player].getName()} played {pa[played_opponents[index]].getName()} {pmax} times, this is {round((pmax/pa[player].getTD())*100)}% of their duels") 
+
+def doBattleRandom(first, second):
+  r = random.random() * 100
+  firstd = abs(first.getSkill() - r)
+  secondd = abs(second.getSkill() -r)
+  if firstd >= secondd:
+    return (first, second)
+  else:
+    return (second, first)
+
+def doBattle5050(first, second):
+  r = random.randint(0, 1)
+  if r == 0:
+    return (first, second)
+  else:
+    return (second, first)  
+
 def doBattle(first, second):
+  return doBattle5050(first, second)
   p1s = first.getSkill()
   p2s = second.getSkill()
   d = p1s - p2s + (random.random() * 100) - 50
-  #print(d)
   if d > 0:
     return (first,second)
   else:
@@ -46,12 +76,13 @@ class Player:
     self.total_duels    = 0
     self.inactive_count = 0
     self.longest_wait   = 0
-    self.timeline = []
+    self.timeline       = []
+    self.played         = []
 
   def Reset(self):
     self.__init__(self.name, self.skill)
 
-  def Won(self):
+  def Won(self, loser_index):
     self.total_wins     += 1
     self.total_duels    += 1
     self.current_streak += 1
@@ -59,8 +90,9 @@ class Player:
       self.longest_wait = self.inactive_count
     self.inactive_count = 0
     self.timeline.append(gob + "\u2588" + rsc)
+    self.played.append(loser_index)
 
-  def Lost(self):
+  def Lost(self, winner_index):
     self.total_losses   += 1
     self.total_duels    += 1
     self.current_streak = 0
@@ -68,6 +100,7 @@ class Player:
       self.longest_wait = self.inactive_count
     self.inactive_count = 0
     self.timeline.append(rob + "\u2588" + rsc)
+    self.played.append(winner_index)
 
   def Timeout(self):
     self.current_streak = 0
@@ -85,12 +118,15 @@ class Player:
   def getSkill(self):
     return self.skill
 
-  def printTimeline(self):
+  def getTimeline(self):
     return self.timeline
 
   def printTimelinePretty(self):
     print(f"{self.name.ljust(10)}|{str(self.total_wins).center(6)}|{str(self.total_losses).center(8)}|{str(self.total_duels).center(13)}|{str(self.longest_wait).center(14)}|",end=' ')
     print(''.join(self.timeline))
+
+  def getPlayed(self):
+    return self.played
 
   def setSkill(self, skill):
     self.skill = skill
@@ -117,10 +153,30 @@ class Player:
   def setIC(self, ic):
     self.inactive_count = ic
 
+'''
+FC_RuleSet_7
+Players are matched to prioritise the following:
+ 1. minimise inactive_count / waiting time
+ 2. minimise the range of the players' total_duels
+ 3. maximise the duel variation for each player
+ 4. maximise the duel variation for the stream/host
+'''
+class FC_RuleSet_7:
+
+  def __init__(self, players, rounds, seed):
+    self.fc             = "FC_RuleSet_7 - Best?"
+    self.players        = players
+    self.rounds         = rounds
+    self.seed           = seed
+    self.cround         = 0
+
+  def setupDuel(self, previous_winner):
+    return
+
 
 
 '''
-FC_Ruleset_6
+FC_RuleSet_6
 Players are matched to minimise waiting time
 Players are not Timeout()
 '''
@@ -138,6 +194,7 @@ class FC_RuleSet_6:
     self.cround += 1
     if self.cround > self.rounds:
       dumpPlayers(self.players)
+      dumpPlayed(self.players)
       resetPlayers(self.players)
       return   
     if self.cround == 1:
@@ -160,11 +217,10 @@ class FC_RuleSet_6:
 
     # Do battle
     w,l = doBattle(p1, p2)
-    w.Won()
-    l.Lost() 
+    w.Won(players.index(l))
+    l.Lost(players.index(w))
+
     self.setupDuel(0)
-
-
 
 '''
 FC_Ruleset_5
@@ -185,6 +241,7 @@ class FC_RuleSet_5:
     self.cround += 1
     if self.cround > self.rounds:
       dumpPlayers(self.players)
+      dumpPlayed(self.players)
       resetPlayers(self.players)
       return   
     if self.cround == 1:
@@ -211,8 +268,9 @@ class FC_RuleSet_5:
 
     # Do battle
     w,l = doBattle(p1, p2)
-    w.Won()
-    l.Lost()
+    w.Won(players.index(l))
+    l.Lost(players.index(w))
+
 
     # Check if winner needs to Timeout()
     if w.getCS() >= 3:
@@ -238,6 +296,7 @@ class FC_RuleSet_4:
     self.cround += 1
     if self.cround > self.rounds:
       dumpPlayers(self.players)
+      dumpPlayed(self.players)
       resetPlayers(self.players)
       return   
     if self.cround == 1:
@@ -259,10 +318,10 @@ class FC_RuleSet_4:
 
     # Do battle
     w,l = doBattle(p1, p2)
-    w.Won()
-    l.Lost()
-    self.setupDuel(0)
+    w.Won(players.index(l))
+    l.Lost(players.index(w))
 
+    self.setupDuel(0)
 
 '''
 FC_Ruleset_3
@@ -283,6 +342,7 @@ class FC_RuleSet_3:
     self.cround += 1
     if self.cround > self.rounds:
       dumpPlayers(self.players)
+      dumpPlayed(self.players)
       resetPlayers(self.players)
       return   
     if self.cround == 1:
@@ -321,8 +381,10 @@ class FC_RuleSet_3:
 
     # Do battle
     w,l = doBattle(p1, p2)
-    w.Won()
-    l.Lost()
+    w.Won(players.index(l))
+    l.Lost(players.index(w))
+
+
 
     # Check if winner needs to Timeout()
     if w.getCS() >= 3:
@@ -349,6 +411,7 @@ class FC_RuleSet_2:
     self.cround += 1
     if self.cround > self.rounds:
       dumpPlayers(self.players)
+      dumpPlayed(self.players)
       resetPlayers(self.players)
       return   
     if self.cround == 1:
@@ -358,6 +421,7 @@ class FC_RuleSet_2:
     p2 = self.players[1]
     if isinstance(previous_winner, Player):
       p1 = previous_winner
+
     p1_ic = p1.getIC()
     p1_td = p1.getTD()
     p2_ic = p2.getIC()
@@ -387,11 +451,10 @@ class FC_RuleSet_2:
 
     # Do battle
     w,l = doBattle(p1, p2)
-    w.Won()
-    l.Lost()
+    w.Won(players.index(l))
+    l.Lost(players.index(w))
 
-    #dumpPlayers(self.players)
-    #i = input()
+
 
     # Check if winner needs to Timeout()
     if w.getCS() >= 3:
@@ -421,6 +484,7 @@ class FC_RuleSet_1:
     self.cround += 1
     if self.cround > self.rounds:
       dumpPlayers(self.players)
+      dumpPlayed(self.players)
       resetPlayers(self.players)
       return
     if self.cround == 1:
@@ -453,8 +517,10 @@ class FC_RuleSet_1:
         player.Watching()
 
     w,l = doBattle(p1, p2)
-    w.Won()
-    l.Lost()
+    w.Won(players.index(l))
+    l.Lost(players.index(w))
+
+
 
     if w.getCS() >= 3:
       w.Timeout()
