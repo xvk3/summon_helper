@@ -229,6 +229,7 @@ class FC_RuleSet_7:
       # If the next two players to play have recently played eachother, swap one player out
       if self.players[hplayers[0]].getLastPlayed() == hplayers[1]:
         # Swap to the player with the longest IC
+        print(rob+"swap to player with longest IC")
         highest_ic = -1
         highest_ic_indexes = []
         for index in range(0, len(self.players)):
@@ -237,13 +238,24 @@ class FC_RuleSet_7:
         for index in range(0, len(self.players)):
           if self.players[index].getIC() == highest_ic:
             highest_ic_indexes.append(index)           
+        print(highest_ic_indexes)
         for index in range(0, len(highest_ic_indexes)):
+          r = random.randint(0, 1)
           if self.players[highest_ic_indexes[index]] != self.players[hplayers[0]]:
-            r = random.randint(0, 1)
             if r == 0: 
               p2 = self.players[highest_ic_indexes[index]]
             else:
               p1 = self.players[highest_ic_indexes[index]]
+          else:
+            p1 = self.players[hplayers[0]]
+            p2 = self.players[hplayers[1]]
+            flag = 1
+            while flag == 1 or p1 == p2:
+              if r == 0:
+                p1 = self.players[random.randint(0, len(self.players)-1)]
+              else:
+                p2 = self.players[random.randint(0, len(self.players)-1)] 
+              flag = 0 
       else:
         p1 = self.players[hplayers[0]]
         p2 = self.players[hplayers[1]]

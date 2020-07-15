@@ -117,6 +117,22 @@ class Process(object):
                      'Name': self.name, 'ErrorCode': self.error_code}
             ReadWriteMemoryError(error)
 
+    def readEx(self, lp_base_address: hex) -> Any:
+      lp_base_address = self.get_pointer(lp_base_address)
+      try:
+        read_buffer = ctypes.create_string_buffer(b"",1000*4)
+        lp_buffer   = ctypes.byref(read_buffer)
+        n_size      = ctypes.sizeof(read_buffer)
+        lp_number_of_bytes_read = ctypes.c_ulong(0)
+        ctypes.windll.kernel32.ReadProcessMemory(self.handle, lp_base_address, lp_buffer, n_size, lp_number_of_bytes_read)
+        return read_buffer.value
+      except (BufferError, ValueError, TypeError) as error:
+        if self.handle:
+          self.close()
+        self.error_code = self.get_last_error()
+        error = {'msg': str(error), 'Handle': self.handle, 'PID': self.pid, 'Name': self.name, 'ErrorCode': self.error_code}
+        ReadWriteMemoryError(error)
+
     def write(self, lp_base_address: int, value: int) -> bool:
         """
         Write data to the process's memory.
