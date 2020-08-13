@@ -9,3 +9,19 @@ Program to analyse the different FC rules
 Sample output:
 
 ![Output](FC_RuleSet_Testing.png)
+
+# scrape_DSR.py
+
+## Instructions
+
+1. Start DarkSoulsRemastered.exe
+2. Start CheatEngine.exe and attach to the DSR process
+3. Open DarkSoulsRemastered.CT and enable the table
+4. Execute scrape_DSR.py
+
+# TODO:
+
+- [ ] make a list of dependencies
+- [ ] implement player class
+- [ ] implement better functions for following pointers and offsets
+
