@@ -22,6 +22,8 @@ Sample output:
 # TODO:
 
 - [ ] make a list of dependencies
-- [ ] implement player class
+- [x] implement player class
 - [ ] implement better functions for following pointers and offsets
-
+- [ ] implement host class ???
+- [ ] integrate with fctest.py
+- [ ] complete inline TODOs

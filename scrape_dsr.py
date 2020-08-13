@@ -35,28 +35,49 @@ BASES              = range(16)
 BASE_NAMES         = ["BaseA", "BaseB", "BaseC", "BaseD", "BaseE", "BaseP", "BaseX", "BaseZ", "LockBonusBase", "BaseMB", "BaseR", "BaseMenu", "BaseN2", "BaseCAR", "BaseNS2", "XC"]
 BASE_ADDRESSES     = {}
 
-# Function Definitions
-def myReadProcessMemoryA(processHandle, address, buffer, bufferSize):
-    if not buffer and bufferSize:
-        #buffer = c_char_p(b"A"*bufferSize)
-        #bufferSize = len(buffer.value)
-        buffer = create_string_buffer(b'\x00', bufferSize)
-    bytesRead = c_ulong(0)
-    if ReadProcessMemory(processHandle, address, buffer, bufferSize, byref(bytesRead)):
-        print("Read " + str(bytesRead.value))
-        return buffer
-    else:
-        print("Error ReadProcessMemory failed: " + str(GetLastError()))
-    return buffer
+# Player Class
+class Player:
+  def __init__(self, base, offset):
+    self.base = BASE_ADDRESSES[base]
+    self.offset = offset
 
-def myReadProcessMemoryW(processHandle, address, buffer, bufferSize):
+  def getState(self):
+    # TODO when following pointers and offsets when does a NULL pointer appear for players not summoned / free multiplayer spaces in the world?
+    # Should be right after self.offset is used
+
+  """ Attempt to parse P1->Name from process """
+  def getName(self):
+    ptr = follow(self.base) + 0x68
+    ptr = follow(ptr) + 0x18
+    ptr = follow(ptr) + self.offset
+    ptr = follow(ptr) + 0x578
+    ptr = follow(ptr) + 0xA8
+    # TODO ReadProcessMemory, convert bytes to usable string
+    return 0
+
+  def getMaxHP(self):
+    # TODO lookup CE offsets for MaxHP
+
+  def getCurHP(self):
+    # TODO lookup CE offsets for CurHP
+
+  def follow(self, ptr):
+    # Read 8 bytes from ptr
+    buf = myReadProcessMemory(PROCESS_HANDLE, ptr, 0, 8)
+    t = ""
+    for c in range(len(buf.raw)-1, -1, -1):
+      t = t + str(hex(buf.raw[c])[2:].zfill(2))
+    return int(t, 16)
+
+"""
+Function Definitions
+""" 
+def myReadProcessMemory(processHandle, address, buffer, bufferSize):
     if not buffer and bufferSize:
-        #buffer = c_wchar_p(u"W"*bufferSize)
-        #bufferSize = len(buffer.value)
         buffer = create_string_buffer(b'\x00', bufferSize)
     bytesRead = c_ulong(0)
     if ReadProcessMemory(processHandle, address, buffer, bufferSize, byref(bytesRead)):
-        print("Read " + str(bytesRead.value))
+        print("Read " + str(bytesRead.value) + " bytes")
         return buffer
     else:
         print("Error ReadProcessMemory failed: " + str(GetLastError()))
@@ -108,6 +129,10 @@ print(BASE_ADDRESSES)
 header = myReadProcessMemoryA(PROCESS_HANDLE, PROCESS_BASE, 0, 2)
 if(header.value == b"MZ"): print("Found MZ/PE header")
 
+
+P1 = Player("BaseX", 0x38)
+# TODO get offsets for remaining players
+
 #print(type(BASE_ADDRESSES["BaseB"]))
 #print(type(int(BASE_ADDRESSES["BaseB"])))
 newptr = myFollowPointer(BASE_ADDRESSES["BaseB"])
@@ -118,7 +143,6 @@ finptr = finptr + 0x12C
 buf = myReadProcessMemoryW(PROCESS_HANDLE, finptr, 0, 32)
 print(buf.value)
 pprint(buf.raw)
-
 
 # Attempt to get P[12345] from Session Info -> Current Player
 baseX = myFollowPointer(BASE_ADDRESSES["BaseX"])
