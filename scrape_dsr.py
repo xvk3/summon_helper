@@ -35,7 +35,9 @@ BASES              = range(16)
 BASE_NAMES         = ["BaseA", "BaseB", "BaseC", "BaseD", "BaseE", "BaseP", "BaseX", "BaseZ", "LockBonusBase", "BaseMB", "BaseR", "BaseMenu", "BaseN2", "BaseCAR", "BaseNS2", "XC"]
 BASE_ADDRESSES     = {}
 
-# Player Class
+"""
+Player Class
+"""
 class Player:
   def __init__(self, base, offset):
     self.base = BASE_ADDRESSES[base]
@@ -132,9 +134,8 @@ if(header.value == b"MZ"): print("Found MZ/PE header")
 
 P1 = Player("BaseX", 0x38)
 # TODO get offsets for remaining players
+# Can the offsets be calculated using a XC it seems that XC is an offset to the next PX
 
-#print(type(BASE_ADDRESSES["BaseB"]))
-#print(type(int(BASE_ADDRESSES["BaseB"])))
 newptr = myFollowPointer(BASE_ADDRESSES["BaseB"])
 newptr = newptr + 16
 finptr = myFollowPointer(newptr)
