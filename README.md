@@ -21,9 +21,13 @@ Sample output:
 
 # TODO:
 
-- [ ] make a list of dependencies
+- [ ] make a list of python dependencies
 - [x] implement player class
 - [ ] implement better functions for following pointers and offsets
-- [ ] implement host class ???
+- [ ] implement FC class
 - [ ] integrate with fctest.py
+-- [ ] FC_RuleSet_7
 - [ ] complete inline TODOs
+- [ ] GUI
+- [ ] Send less junk to stdout
+
