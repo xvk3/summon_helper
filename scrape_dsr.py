@@ -1,17 +1,18 @@
 from ctypes import *
 from ctypes.wintypes import *
 from pprint import pprint
-import time
+from tkinter import ttk
+import tkinter as tk
+from tkinter import ttk
+from mem_edit import Process
 
+import time
+import threading
 import win32api
 import win32process
 import win32con
-
 import psutil
-from mem_edit import Process
-
 import struct
-
 import PySimpleGUI as sg
 
 # Function Declarations
@@ -35,9 +36,61 @@ PROCESS_ALL_ACCESS = 0x001F0FFF
 PROCESS_HANDLE     = 0x00000000
 PROCESS_BASE       = 0x00000000
 
+PLAYERS            = []
+
 BASES              = range(16)
 BASE_NAMES         = ["BaseA", "BaseB", "BaseC", "BaseD", "BaseE", "BaseP", "BaseX", "BaseZ", "LockBonusBase", "BaseMB", "BaseR", "BaseMenu", "BaseN2", "BaseCAR", "BaseNS2", "XC"]
 BASE_ADDRESSES     = {}
+
+
+"""
+GUI Class
+"""
+class GUI:
+  def __init__(self):
+    self.root = tk.Tk()
+    self.root.configure(background='black')
+    style = ttk.Style(self.root)
+    style.configure('TLabel', background='black', foreground='white')
+    style.configure('TFrame', background='black')
+    self.frame = ttk.Frame(self.root)
+    self.frame.grid(column=0, row=0)
+    self.update()
+   
+  def update(self):
+    while True:
+      self.drawPlayers()
+      self.drawCurrent()
+      self.root.update_idletasks()
+      self.root.update()
+      time.sleep(0.1)
+
+  def drawPlayers(self):
+    for index in range(0, len(PLAYERS)):
+      ttk.Label(self.frame, text="Name", font='Helvetica 10 bold').grid(column=1, row=0)
+      ttk.Label(self.frame, text="Stats", font='Helvetica 10 bold').grid(column=2, row=0)
+      ttk.Label(self.frame, text="SL", font='Helvetica 10 bold').grid(column=3, row=0)
+      ttk.Label(self.frame, text="Timeline", font='Helvetica 10 bold').grid(column=4, row=0)
+      if PLAYERS[index].getState():
+        ttk.Label(self.frame, text=PLAYERS[index].getName()).grid(column=1, row=index+1)
+        ttk.Label(self.frame, text=PLAYERS[index].getStats()).grid(column=2, row=index+1)
+        ttk.Label(self.frame, text=PLAYERS[index].getSL()).grid(column=3, row=index+1)
+        for rindex in range(0, len(PLAYERS[index].getTimeline())):
+          if PLAYERS[index].getTimeline()[rindex] == -1:
+            ttk.Label(self.frame, text="\u2588", foreground="red").grid(column=4 + rindex, row=index+1)
+          elif PLAYERS[index].getTimeline()[rindex] == 1:
+            ttk.Label(self.frame, text="\u2588", foreground="green").grid(column=4 + rindex, row=index+1)
+          else:
+            ttk.Label(self.frame, text="\u2588", foreground="yellow").grid(column=4 + rindex, row=index+1)
+      else:
+        ttk.Label(self.frame, text="Player" + str(index)).grid(column=1, row=index+1)
+        ttk.Label(self.frame, text="??/??/??/??/??/??/??/??").grid(column=2, row=index+1)
+        ttk.Label(self.frame, text="??").grid(column=3, row=index+1)
+        ttk.Label(self.frame, text="?").grid(column=3, row=index+1)
+
+  def drawCurrent(self):
+    #for index in 
+    ttk.Label(self.frame, text="Current Duel", font='Helvetica 10 bold').grid(column=1, row=7, sticky=EW)
 
 """
 Duel Class
@@ -46,6 +99,7 @@ class FightClub:
   def __init__(self, players):
     self.fc             = "FC_RuleSet_7 - Best?"
     self.players        = players
+    self.gui            = GUI()
 
   def startFC(self, previous_winner):
 
@@ -95,7 +149,8 @@ class FightClub:
       print(player.getTimeline())
       print(player.getCurHPlog())
       print("---")
-      
+
+    #self.gui.update()
     #startFC(wp)
     
       
@@ -115,6 +170,7 @@ class Player:
     self.curHP          = 0
     self.curHPptr       = 0
     self.status         = 0
+    self.stats          = {"VIT":0, "ATN":0, "END":0, "STR":0, "DEX":0, "RES":0, "INT":0, "FTH":0}
     # FC
     self.current_streak = 0
     self.total_wins     = 0
@@ -122,12 +178,14 @@ class Player:
     self.total_duels    = 0
     self.inactive_count = 0
     self.longest_wait   = 0
-    self.timeline       = []
+    self.timeline       = [1,0,-1,1,0,0,1,1,-1,0,0,0,-1,1,1,0,-1,1]
     self.played         = []
-    self.getState()
     # Duel
     self.curHPlog       = []
-
+    # Init Functions
+    self.luStats()
+    self.getState()
+    
   def Won(self, loser_index):
     self.total_duels    += 1
     self.current_streak += 1
@@ -225,6 +283,20 @@ class Player:
     buf = myReadProcessMemory(PROCESS_HANDLE, ptr, 0, 2)
     return struct.unpack('<H', buf.raw)[0] if buf else 0
 
+  def luStats(self):
+    ptr = self.follow(self.base) + 0x68
+    ptr = self.follow(ptr) + 0x18
+    ptr = self.follow(ptr) + self.offset
+    ptr = self.follow(ptr) + 0x578
+    arr = self.follow(ptr) + 0x40
+    for stat in range(0, 8):
+      off = arr + (stat * 0x08)
+      buf = myReadProcessMemory(PROCESS_HANDLE, off, 0, 2)
+      self.stats[list(self.stats.keys())[stat]] = struct.unpack('<H', buf.raw)[0] if buf else 0
+
+  def getStats(self):
+    return "/".join("{0}".format(l) for l in list(self.stats.values()))
+
   def getCS(self):
     return self.current_streak
 
@@ -267,9 +339,9 @@ def myReadProcessMemory(processHandle, address, buffer, bufferSize):
     return buffer
 
 def myGetPID(processName):
-    pid = next(item for item in psutil.process_iter() if item.name() == processName).pid
-    # TODO add error handling here, DSR process might not be running
-    return pid
+    for item in psutil.process_iter():
+      if item.name() == processName:
+        return item.pid
 
 def myGetBaseAddress(processHandle):
     module_handles = win32process.EnumProcessModules(processHandle)
@@ -283,23 +355,12 @@ def myGetBaseAddresses():
     for row in range(0, len(ifile)):
         BASE_ADDRESSES[BASE_NAMES[row]] = int(ifile[row])
 
-def myFollowPointer(ptr):    
-    address = myReadProcessMemory(PROCESS_HANDLE, ptr, 0, 8)
-    print(type(address.raw))
-    print(len(address.raw))
-    t = ""
-    print(hex(address.raw[0])[2:].zfill(2))
-    print(hex(address.raw[1])[2:].zfill(2))
-    for c in range(len(address.raw)-1, -1, -1):
-        print(hex(address.raw[c]))
-        t = t + str(hex(address.raw[c])[2:].zfill(2))
-    print(t)
-    print(int(t, 16))
-    return int(t, 16)
-
 def myDumpPlayer(player):
-    # TODO dump information from player object, colorised
-    return 0
+    print("Name   = " + player.getName())
+    print("SL     = " + str(player.getSL()))
+    print("Stats  = " + player.getStats())
+    print("MaxHP  = " + str(player.getMaxHP()))
+    print("CurHP  = " + str(player.getCurHP()))
  
 PROCESS_PID    = myGetPID(PROCESS_NAME)
 PROCESS_HANDLE = OpenProcess(PROCESS_ALL_ACCESS, False, PROCESS_PID)
@@ -316,24 +377,16 @@ print(BASE_ADDRESSES)
 header = myReadProcessMemory(PROCESS_HANDLE, PROCESS_BASE, 0, 2)
 if(header.value == b"MZ"): print("Found MZ/PE header")
 
-# TODO can the offsets be calculated using the XC base, it seems that XC is an offset to the next player?
-# the magic number is 0x38 / 56
+# Generate players
+for p in range(0, 6):
+  PLAYERS.append(Player("BaseX", 0x38 * p))
 
-P0 = Player("BaseX", 0x00) # Host
-P1 = Player("BaseX", 0x38)
-P2 = Player("BaseX", 0x70)
-P3 = Player("BaseX", 0xA8)
-P4 = Player("BaseX", 0xE0)
-P5 = Player("BaseX", 0x118)
+# Dump host info
+myDumpPlayer(PLAYERS[0])
 
-PLAYERS = []
-#If the host wants to play include the following line
-PLAYERS.append(P0)
-PLAYERS.append(P1)
-PLAYERS.append(P2)
-PLAYERS.append(P3)
-PLAYERS.append(P4)
-PLAYERS.append(P5)
+FC = FightClub(PLAYERS)
+fct = threading.Thread(target=FC.startFC, args=(-1,))
+fct.start()
 
 # Check for active players
 x = 0
@@ -345,18 +398,7 @@ while x < 2:
   if x < 2:
     x = 0
 
-# Print host information
-print("Player 0 Name   = " + P0.getName())
-print("Player 0 MaxHP  = " + str(P0.getMaxHP()))
-print("Player 0 CurHP  = " + str(P0.getCurHP()))
-print("Player 0 SL     = " + str(P0.getSL()))
-# Print P1 information
-print("Player 1 Name   = " + P1.getName())
-print("Player 1 MaxHP  = " + str(P1.getMaxHP()))
-print("Player 1 CurHP  = " + str(P1.getCurHP()))
-print("Player 1 SL     = " + str(P1.getSL()))
-
-FC = FightClub(PLAYERS)
-FC.startFC(-1)
+g = GUI()
+g.update()
 
 CloseHandle(PROCESS_HANDLE)
